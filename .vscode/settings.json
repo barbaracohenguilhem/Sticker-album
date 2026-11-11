@@ -1,0 +1,9 @@
+{
+  "markdownlint.ignore": [
+    "node_modules/**",
+    ".next/**",
+    "data/**",
+    ".swarm/**",
+    ".claude-flow/**"
+  ]
+}

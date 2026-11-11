@@ -12,29 +12,6 @@ export default function BairroPage() {
   const now = new Date();
   const open = world.places.filter((place) => placeIsOpen(place, now));
   const later = world.places.filter((place) => !placeIsOpen(place, now));
-  // #region agent log
-  fetch("http://127.0.0.1:7252/ingest/cedaf1fd-632a-4e73-be7d-3adf5f5953a3", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "258405" },
-    body: JSON.stringify({
-      sessionId: "258405",
-      runId: "post-fix",
-      hypothesisId: "C",
-      location: "app/page.tsx:partition",
-      message: "bairro open/later with shared Date",
-      data: {
-        nowIso: now.toISOString(),
-        openIds: open.map((place) => place.id),
-        laterIds: later.map((place) => place.id),
-        overlap: open.filter((place) => later.some((other) => other.id === place.id)).map((place) => place.id),
-        missing: world.places
-          .filter((place) => !open.some((other) => other.id === place.id) && !later.some((other) => other.id === place.id))
-          .map((place) => place.id),
-      },
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {});
-  // #endregion
 
   return (
     <section className="street">
