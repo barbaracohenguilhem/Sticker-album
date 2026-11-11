@@ -1,8 +1,12 @@
 # Runtime de agente: embeddings, caminhos locais, contadores. Não é código do álbum.
 .claude-flow/neural/
+.claude-flow/daemon-state.json
+.claude-flow/daemon.pid
+.claude-flow/logs/
 .swarm/
 
 node_modules/
 .next/
 data/
 tsconfig.tsbuildinfo
+.cursor/debug-*.log
