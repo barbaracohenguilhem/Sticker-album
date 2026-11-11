@@ -216,6 +216,25 @@ export function placeIsOpen(place: Place, date = new Date()): boolean {
   return true;
 }
 
+/** Refresh seed fields on persisted places without wiping player progress. */
+export function syncPlaces(world: World): boolean {
+  let changed = false;
+  const seeds = new Map(PLACES.map((place) => [place.id, place]));
+  for (const place of world.places) {
+    const seed = seeds.get(place.id);
+    if (!seed) continue;
+    if (place.open !== seed.open) {
+      place.open = seed.open;
+      changed = true;
+    }
+    if (place.visitTroco !== seed.visitTroco) {
+      place.visitTroco = seed.visitTroco;
+      changed = true;
+    }
+  }
+  return changed;
+}
+
 function blankInstance(partial: Pick<Instance, "id" | "archetypeId" | "material" | "originLabel"> & Partial<Instance>): Instance {
   return {
     shopId: null,
@@ -418,15 +437,15 @@ function tilt(value: unknown): number {
   return Math.round(value);
 }
 
-function apply(world: World, action: Action): string {
+function apply(world: World, action: Action, at = new Date()): string {
   const user = requireUser(world);
-  const today = dayKey();
+  const today = dayKey(at);
 
   switch (action.type) {
     case "approach": {
       const place = world.places.find((item) => item.id === action.placeId);
       if (!place) throw new Error("Não existe esse lugar.");
-      if (!placeIsOpen(place)) throw new Error("Esse holograma ainda não solidifica.");
+      if (!placeIsOpen(place, at)) throw new Error("Esse holograma ainda não solidifica.");
       world.presence[user.id] = place.id;
       if (user.visits[place.id] === today) {
         return "Você já passou aqui hoje. O balcão abre, mas a calçada não paga de novo.";
@@ -649,8 +668,8 @@ function apply(world: World, action: Action): string {
   }
 }
 
-export function perform(input: World, action: Action): { world: World; notice: string } {
+export function perform(input: World, action: Action, at = new Date()): { world: World; notice: string } {
   const world = structuredClone(input);
-  const notice = apply(world, action);
+  const notice = apply(world, action, at);
   return { world, notice };
 }

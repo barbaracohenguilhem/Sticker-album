@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { ensureSpinner, perform, seedWorld } from "./logic";
+import { ensureSpinner, perform, seedWorld, syncPlaces } from "./logic";
 import type { Action, World } from "./types";
 
 const file = path.join(process.cwd(), "data", "album.sqlite");
@@ -257,8 +257,9 @@ function readWorld(): World | null {
 export function loadWorld(): World {
   const existing = readWorld();
   const world = existing ?? seedWorld();
+  const synced = existing ? syncPlaces(world) : false;
   const spun = ensureSpinner(world);
-  if (!existing || spun) saveWorld(world);
+  if (!existing || synced || spun) saveWorld(world);
   return world;
 }
 
