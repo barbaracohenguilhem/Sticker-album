@@ -56,23 +56,31 @@ test("syncPlaces alinha open e visitTroco sem apagar progresso", () => {
 test("viagem solidifica, paga calçada e enche o spinner", () => {
   const start = seedWorld();
   ensureSpinner(start, "2026-11-11");
-  const walked = perform(start, { type: "approach", placeId: "viagem" });
+  const walked = perform(start, { type: "approach", placeId: "viagem" }, WEDNESDAY);
   assert.equal(walked.world.users.find((user) => user.id === "bia")?.troco, 44);
-  assert.equal(walked.world.spinner.filter((slot) => slot.shopId === "viagem").length, 2);
-  const piece = walked.world.instances.find((item) => item.shopId === "viagem");
+  assert.equal(
+    walked.world.spinner.filter((slot) => slot.shopId === "viagem" && slot.day === "2026-11-11").length,
+    2,
+  );
+  const piece = walked.world.instances.find(
+    (item) => item.shopId === "viagem" && item.mintedOn === "2026-11-11",
+  );
   assert.equal(piece?.originLabel, "Quiosque de Viagem");
 });
 
 test("artista e causa abrem sem troco de calçada", () => {
   let world = seedWorld();
   ensureSpinner(world, "2026-11-11");
-  const artist = perform(world, { type: "approach", placeId: "artista" });
+  const artist = perform(world, { type: "approach", placeId: "artista" }, WEDNESDAY);
   assert.equal(artist.world.users.find((user) => user.id === "bia")?.troco, 36);
   assert.equal(artist.world.presence.bia, "artista");
   world = artist.world;
-  const cause = perform(world, { type: "approach", placeId: "causa" });
+  const cause = perform(world, { type: "approach", placeId: "causa" }, WEDNESDAY);
   assert.equal(cause.world.users.find((user) => user.id === "bia")?.troco, 36);
-  assert.equal(cause.world.spinner.filter((slot) => slot.shopId === "causa").length, 1);
+  assert.equal(
+    cause.world.spinner.filter((slot) => slot.shopId === "causa" && slot.day === "2026-11-11").length,
+    1,
+  );
 });
 
 test("a calçada paga uma vez por loja no dia, e loja fechada não solidifica", () => {
