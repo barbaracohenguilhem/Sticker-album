@@ -121,23 +121,23 @@ const PLACES: Place[] = [
     kind: "feira",
     name: "Feira de Sábado",
     blurb: "Só arma no sábado, e nunca no mesmo canto. A peça daqui o jogo não reimprime.",
-    open: false,
-    visitTroco: 0,
+    open: true,
+    visitTroco: 8,
   },
   {
     id: "viagem",
     kind: "viagem",
     name: "Quiosque de Viagem",
     blurb: "Só existe quando você vai até outro lugar. A origem fica carimbada.",
-    open: false,
-    visitTroco: 0,
+    open: true,
+    visitTroco: 8,
   },
   {
     id: "artista",
     kind: "artista",
     name: "Banca do artista",
     blurb: "Aparece se alguém publicar uma arte e cobrar dinheiro de verdade. Troco não compra.",
-    open: false,
+    open: true,
     visitTroco: 0,
   },
   {
@@ -145,7 +145,7 @@ const PLACES: Place[] = [
     kind: "causa",
     name: "Ponto de causa",
     blurb: "Reciclagem e doação, quando der para verificar. Não é loja. Ainda não paga.",
-    open: false,
+    open: true,
     visitTroco: 0,
   },
 ];
@@ -180,7 +180,60 @@ const RECIPES: Record<string, { count: number; options: RecipeOption[] }> = {
       { material: "tresd", price: 18, weight: 1 },
     ],
   },
+  feira: {
+    count: 2,
+    options: [
+      { material: "gelatina", price: 5, weight: 1, commonOnly: true },
+      { material: "holografico", price: 11, weight: 1 },
+    ],
+  },
+  viagem: {
+    count: 2,
+    options: [
+      { material: "gelatina", price: 6, weight: 1 },
+      { material: "holografico", price: 13, weight: 1, commonOnly: true },
+    ],
+  },
+  artista: {
+    count: 1,
+    options: [{ material: "veludo", price: 28, weight: 1 }],
+  },
+  causa: {
+    count: 1,
+    options: [{ material: "gelatina", price: 3, weight: 1, commonOnly: true }],
+  },
 };
+
+export function placeIsOpen(place: Place, date = new Date()): boolean {
+  if (!place.open) return false;
+  if (place.kind === "feira") {
+    const weekday = new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Sao_Paulo",
+      weekday: "short",
+    }).format(date);
+    return weekday === "Sat";
+  }
+  return true;
+}
+
+/** Refresh seed fields on persisted places without wiping player progress. */
+export function syncPlaces(world: World): boolean {
+  let changed = false;
+  const seeds = new Map(PLACES.map((place) => [place.id, place]));
+  for (const place of world.places) {
+    const seed = seeds.get(place.id);
+    if (!seed) continue;
+    if (place.open !== seed.open) {
+      place.open = seed.open;
+      changed = true;
+    }
+    if (place.visitTroco !== seed.visitTroco) {
+      place.visitTroco = seed.visitTroco;
+      changed = true;
+    }
+  }
+  return changed;
+}
 
 function blankInstance(partial: Pick<Instance, "id" | "archetypeId" | "material" | "originLabel"> & Partial<Instance>): Instance {
   return {
@@ -298,9 +351,10 @@ export function seedWorld(): World {
 
 export function ensureSpinner(world: World, day = dayKey()): boolean {
   let changed = false;
+  const spinnerDay = new Date(`${day}T12:00:00-03:00`);
   for (const place of world.places) {
     const recipe = RECIPES[place.id];
-    if (!place.open || !recipe) continue;
+    if (!placeIsOpen(place, spinnerDay) || !recipe) continue;
     if (world.spinner.some((slot) => slot.shopId === place.id && slot.day === day)) continue;
     const rng = mulberry32(hash(`${place.id}:${day}`));
     for (let index = 0; index < recipe.count; index += 1) {
@@ -383,15 +437,15 @@ function tilt(value: unknown): number {
   return Math.round(value);
 }
 
-function apply(world: World, action: Action): string {
+function apply(world: World, action: Action, at = new Date()): string {
   const user = requireUser(world);
-  const today = dayKey();
+  const today = dayKey(at);
 
   switch (action.type) {
     case "approach": {
       const place = world.places.find((item) => item.id === action.placeId);
       if (!place) throw new Error("Não existe esse lugar.");
-      if (!place.open) throw new Error("Esse holograma ainda não solidifica.");
+      if (!placeIsOpen(place, at)) throw new Error("Esse holograma ainda não solidifica.");
       world.presence[user.id] = place.id;
       if (user.visits[place.id] === today) {
         return "Você já passou aqui hoje. O balcão abre, mas a calçada não paga de novo.";
@@ -614,8 +668,8 @@ function apply(world: World, action: Action): string {
   }
 }
 
-export function perform(input: World, action: Action): { world: World; notice: string } {
+export function perform(input: World, action: Action, at = new Date()): { world: World; notice: string } {
   const world = structuredClone(input);
-  const notice = apply(world, action);
+  const notice = apply(world, action, at);
   return { world, notice };
 }

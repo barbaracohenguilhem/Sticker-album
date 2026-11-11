@@ -4,7 +4,7 @@ import { useParams } from "next/navigation";
 import { StickerFace } from "@/components/sticker";
 import { useWorld } from "@/components/world";
 import { PAGE_PRICE } from "@/lib/labels";
-import { dayKey } from "@/lib/logic";
+import { dayKey, placeIsOpen } from "@/lib/logic";
 
 export default function LojaPage() {
   const params = useParams<{ id: string }>();
@@ -12,7 +12,7 @@ export default function LojaPage() {
   if (!world) return null;
   const place = world.places.find((item) => item.id === params.id);
   if (!place) return <p>Esse holograma não está no bairro.</p>;
-  if (!place.open) {
+  if (!placeIsOpen(place)) {
     return (
       <section className="counter">
         <h2>{place.name}</h2>
