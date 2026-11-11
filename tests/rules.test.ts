@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { gelatinThickness, perform, seedWorld } from "../lib/logic";
+import { ensureSpinner, gelatinThickness, perform, placeIsOpen, seedWorld } from "../lib/logic";
 
 test("o primeiro dia tem os dois álbuns e meia dúzia de gelatinas", () => {
   const world = seedWorld();
@@ -14,10 +14,41 @@ test("o primeiro dia tem os dois álbuns e meia dúzia de gelatinas", () => {
     0,
   );
   for (const kind of ["feira", "viagem", "artista", "causa"] as const) {
-    assert.equal(world.places.find((place) => place.kind === kind)?.open, false);
+    assert.equal(world.places.find((place) => place.kind === kind)?.open, true);
   }
-  assert.equal(world.places.filter((place) => place.open).length, 3);
+  assert.equal(world.places.length, 7);
+  const wednesday = new Date("2026-11-11T15:00:00-03:00");
+  assert.equal(
+    world.places.filter((place) => placeIsOpen(place, wednesday)).length,
+    6,
+  );
+  const feira = world.places.find((place) => place.id === "feira");
+  assert.ok(feira);
+  assert.equal(placeIsOpen(feira, wednesday), false);
+  assert.equal(placeIsOpen(feira, new Date("2026-11-14T10:00:00-03:00")), true);
   assert.ok(world.listings.some((listing) => listing.sellerId === "teo"));
+});
+
+test("viagem solidifica, paga calçada e enche o spinner", () => {
+  const start = seedWorld();
+  ensureSpinner(start, "2026-11-11");
+  const walked = perform(start, { type: "approach", placeId: "viagem" });
+  assert.equal(walked.world.users.find((user) => user.id === "bia")?.troco, 44);
+  assert.equal(walked.world.spinner.filter((slot) => slot.shopId === "viagem").length, 2);
+  const piece = walked.world.instances.find((item) => item.shopId === "viagem");
+  assert.equal(piece?.originLabel, "Quiosque de Viagem");
+});
+
+test("artista e causa abrem sem troco de calçada", () => {
+  let world = seedWorld();
+  ensureSpinner(world, "2026-11-11");
+  const artist = perform(world, { type: "approach", placeId: "artista" });
+  assert.equal(artist.world.users.find((user) => user.id === "bia")?.troco, 36);
+  assert.equal(artist.world.presence.bia, "artista");
+  world = artist.world;
+  const cause = perform(world, { type: "approach", placeId: "causa" });
+  assert.equal(cause.world.users.find((user) => user.id === "bia")?.troco, 36);
+  assert.equal(cause.world.spinner.filter((slot) => slot.shopId === "causa").length, 1);
 });
 
 test("a calçada paga uma vez por loja no dia, e loja fechada não solidifica", () => {

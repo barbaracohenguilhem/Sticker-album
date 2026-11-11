@@ -19,7 +19,7 @@ Rules and data:
 
 - `lib/types.ts` — `World`, `Action`, `Instance.home` (`moeda`, `museu`, `balcao`, `venda`), albums `museu` (caderno) and `moeda` (álbum de fotos), `presence`, listings, spinner slots.
 - `lib/labels.ts` — `POCKETS` (12), `PAGE_LIMIT` (8), `STICKERS_PER_PAGE` (8), `CARE_TROCO` (3), `PAGE_PRICE` (6), `TRADE_FEE` (1), `REPRINT_PRICE` (gelatina 7, holográfico 12).
-- `lib/logic.ts` — `seedWorld`, `ensureSpinner`, `perform` (clones, then `apply`). `dayKey` uses `America/Sao_Paulo`. Open shops with recipes: quiosque, papelaria, bancada. Closed, no recipe: feira, viagem, artista, causa. Seed users are Bia and Teo. `perform` throws on `reset`.
+- `lib/logic.ts` — `seedWorld`, `ensureSpinner`, `perform` (clones, then `apply`). `dayKey` uses `America/Sao_Paulo`. `placeIsOpen` gates feira to Saturdays (`America/Sao_Paulo`). All seven places seed `open: true`; recipes on every shop. Artista e causa têm `visitTroco: 0`. Seed users are Bia and Teo. `perform` throws on `reset`.
 - `lib/db.ts` — SQLite file `data/album.sqlite` via `node:sqlite`. `loadWorld` reads or seeds, then `ensureSpinner`, and saves when the file was empty or the spinner grew. `applyAction` reseeds on `reset`; every other action is `perform(loadWorld(), action)` then `saveWorld`. `saveWorld` deletes and reinserts the world tables inside a transaction. Session row stores `activeUserId` and `presence`.
 
 Actions in `apply`: `approach`, `buySlot`, `buyPage`, `stick`, `moveOnPage`, `unstick`, `movePocket`, `setTariff`, `list`, `cancelList`, `buyListing`, `buyReprint`, `switchUser`. `reset` is refused inside `perform` and handled only in `applyAction`.
@@ -45,7 +45,7 @@ Pages, and the actions they send:
 
 What `tests/rules.test.ts` already asserts, so do not report these as untested:
 
-- Seed: Bia’s tariff, two albums, six gelatinas, nothing in the museum, four closed place kinds, three open places, Teo’s listing.
+- Seed: Bia’s tariff, two albums, six gelatinas, nothing in the museum, seven places seeded open, six solid on a weekday (`placeIsOpen`), feira only Saturdays, Teo’s listing.
 - `approach` pays visit troco once per shop per day; a closed place throws and does not pay; `perform` does not mutate its input.
 - `buySlot` requires presence, moves the piece to `moeda` as `novo`, marks the slot sold, and refuses a second buy.
 - `stick` pays care once, sets `museu`; listing from the caderno throws; `unstick` leaves a ghost and `marcado`; `movePocket` keeps `marcado` and does not add a ghost.

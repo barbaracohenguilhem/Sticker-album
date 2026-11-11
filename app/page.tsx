@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { dayKey } from "@/lib/logic";
+import { dayKey, placeIsOpen } from "@/lib/logic";
 import { useWorld } from "@/components/world";
 
 export default function BairroPage() {
@@ -9,8 +9,8 @@ export default function BairroPage() {
   if (!world) return null;
   const today = dayKey();
   const here = world.presence[world.activeUserId];
-  const open = world.places.filter((place) => place.open);
-  const later = world.places.filter((place) => !place.open);
+  const open = world.places.filter((place) => placeIsOpen(place));
+  const later = world.places.filter((place) => !placeIsOpen(place));
 
   return (
     <section className="street">
