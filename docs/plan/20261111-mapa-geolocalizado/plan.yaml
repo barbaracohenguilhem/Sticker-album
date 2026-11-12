@@ -1,0 +1,281 @@
+plan_id: "20261111-mapa-geolocalizado"
+status: "pending"
+tldr: |
+  Turn "Dois álbuns" into a Pokémon Go-style map game and keep the sticker domain behind a HUD.
+  W1: pure grid geo lib (lib/geo.ts) || MapLibre map + player location (GPS/Simulado).
+  W2: server domain rewire (geo places, server-side proximity on approach/buySlot/buyPage/catch, SQLite migration, migrated tests) || game HUD shell (persistent map, overlay routes, "Voltar ao mapa").
+  W3: map gameplay (holograma/solid places, bottom-sheet loja, wild spawns + catch, final gates) || read-only critic review of server rules.
+  W4: mobile browser verification at 390x844 with ?sim=1.
+created_at: "2026-11-11T21:40:33-03:00"
+created_by: "gem-planner"
+revision: 1
+replan_count: 0
+planner_revision_used: false
+
+decisions:
+  - "lib/geo.ts is pure (type-only imports, own seeded RNG). Client and server derive the same places and spawns from it. The server trusts only the id and {lat,lng} that the client sends."
+  - "A geo place is materialized into world.places (with lat/lng), and its spinner for the day is generated, only on a proximity-validated approach. loadWorld no longer spins every place daily, which prevents unbounded spinner growth and unauthenticated materialization of arbitrary cells. Trade-off: a place's daily spinner appears only after the player approaches it that day."
+  - "RECIPES are re-keyed by PlaceKind instead of place id. buyPage is gated on the presence place having kind 'papelaria' instead of id 'papelaria'."
+  - "The 7 legacy abstract places (rows with NULL lat/lng) are pruned on load, together with their spinner slots, their unsold balcão instances, and any presence pointing at them. Owned instances keep shopId/originLabel as provenance. seedWorld seeds zero places."
+  - "Catch dedupe uses the deterministic instance id catch-<userId>-<spawnId>, persisted in the instances table (no action deletes instances). This avoids a users-table schema change."
+  - "Catch accepts the current spawn window and the one just before it (grace at the boundary). Older windows are rejected as expired."
+  - "Distance gate: the server allows haversine <= INTERACT_RADIUS_M (40) + GPS_TOLERANCE_M (10). The client uses 40 m for holograma vs solid and for enabling buttons."
+  - "GameMap is mounted once in Shell (persistent, client-only via next/dynamic ssr:false). Bolso/Caderno/Mercado/Tabela keep their existing routes and render as full-screen overlay panels above the map. This reuses the pages unchanged and keeps map/position state when returning."
+  - "T3 changes the Action payloads, so T3 also retires app/loja/[id] (server redirect to '/') to keep tsc green. The loja UI moves to components/place-sheet.tsx in T5."
+  - "The DB path can be overridden with env ALBUM_DB_FILE (default data/album.sqlite). This exists only so tests/db.test.ts can exercise the legacy-schema migration on a temp file."
+  - "npm run build is verified in an isolated copy (/tmp/sa-build). The user's next dev on :3000 shares .next, and an in-place build would break it."
+  - "Wave 3 runs a read-only gem-reviewer critic pass on the server rules (critic_signals: architecture) next to the last code task, so server findings surface before UI verification."
+  - "There is no gem-researcher task: .cursor/agents/album-reviewer.md and planner discovery already fix all boundaries, and the contracts live in shared_context."
+
+assumptions:
+  - "The pivot keeps the sticker domain; only structure/navigation and the place model change."
+  - "Places are procedural grid places, not real-world POIs (no external POI API)."
+  - "Anti-spoofing beyond the server distance check is out of scope."
+  - "The Node runtime (v26) supports node:sqlite, which lib/db.ts already uses."
+  - "The dev/test browser can reach tiles.openfreemap.org. The HUD, markers, and actions must still work if tiles fail."
+  - "No action deletes world.instances (lib/logic.ts only reads/filters them)."
+  - "The browser test may run approach/buy/catch against the live dev DB after a /tmp backup. Reset is not clicked live; tests/db.test.ts covers it."
+  - "Grid density can be tuned so at least one place lies within 150 m of the simulated start."
+
+shared_context:
+  game-contracts:
+    - "lib/geo.ts (producer T1) exports: type LatLng={lat:number;lng:number}; INTERACT_RADIUS_M=40; GPS_TOLERANCE_M=10; VISIBLE_RADIUS_M=500; SPAWN_WINDOW_MS=600000; CELL_DEG (~0.0015); haversineMeters(a,b):number; withinReach(player,target):boolean (<= 40+10); cellOf(lat,lng)->{cx,cy}; placeForCell(cx,cy)->GeoPlace|null; parsePlaceId(id)->{cx,cy}|null (strict /^geo:(-?\\d+):(-?\\d+)$/, safe integers); placeFromId(id)->GeoPlace|null; placesNear(center,radiusM=500)->GeoPlace[]; spawnWindow(at:Date|number)->number; spawnForCell(cx,cy,window)->GeoSpawn|null; parseSpawnId(id)/spawnFromId(id) for 'spawn:<cx>:<cy>:<window>'; spawnsNear(center,radiusM,at)->GeoSpawn[]."
+    - "GeoPlace = Place fields {id:'geo:<cx>:<cy>', kind:PlaceKind, name (pt-BR), blurb (pt-BR), open:true, visitTroco: artista|causa ? 0 : 8} + {lat,lng} inside its own cell. GeoSpawn = {id, cx, cy, window, lat, lng, roll:number in [0,1), material:'gelatina'|'holografico'}."
+    - "After T3: Place gains lat:number; lng:number. Action approach {placeId,lat,lng}; buySlot {slotId,lat,lng}; buyPage {lat,lng}; new catch {spawnId,lat,lng}. lib/logic.ts exports spawnArchetype(world,spawn)->Archetype (common pool, deterministic from roll) and caughtInstanceId(userId,spawnId)->'catch-<userId>-<spawnId>' for client reuse."
+    - "Player location (producer T2) in components/player-location.tsx: 'use client'; PlayerLocationProvider; usePlayerLocation()->{position:LatLng|null, mode:'gps'|'sim', accuracy:number|null, step(dir:'n'|'s'|'e'|'w')}; SIM_START={lat:-23.5614,lng:-46.6559}; STEP_M=5; sim position persisted in sessionStorage."
+    - "Map (producer T2) in components/game-map.tsx: 'use client', default export GameMap; maplibre-gl loaded client-side only; renders a full-viewport map, avatar, 40 m ring, GPS/Simulado badge, and sim d-pad; dev-only window.__mapa = { map } for tests."
+    - "Layering (z-index): map 0; map overlays 10 (badge top-left below HUD, d-pad bottom-left); HUD 20 (top bar, bottom round menu button); place/spawn sheet 30; route overlay panel 40; notice toast 50. Touch targets >= 44px; respect env(safe-area-inset-*)."
+    - "Legacy code map and invariants: .cursor/agents/album-reviewer.md. Old loja UI for reuse: git show HEAD:app/loja/[id]/page.tsx."
+    - "Global constraints: work in place on main; no commits/branches/stashes/pushes; do not touch .claude-flow/; never kill the user's next dev on :3000; never run next build in the repo root; Portuguese UI copy with existing vocabulary (troco, calçada, holograma, bolso, caderno, spinner, fantasma)."
+
+tasks:
+  - id: "T1-geo-lib"
+    title: "Pure geo grid library + tests"
+    description: "Rung: new code (no stdlib or dependency gives deterministic grid places). Create lib/geo.ts per game-contracts and tests/geo.test.ts. Pure TS with type-only imports from lib/types.ts. Re-implement a hash + mulberry32-style RNG locally (do not import it). Portuguese names/blurbs per kind; weighted kinds covering all 7 PlaceKinds; place inset inside its cell; spawn probability per cell per 10-minute window."
+    wave: 1
+    depends_on: []
+    agent: "gem-implementer"
+    status: "pending"
+    retries_used: 0
+    context_cluster: "game-contracts"
+    acceptance_criteria:
+      - "lib/geo.ts exports every symbol listed in shared_context game-contracts (lib/geo.ts entry) with those signatures, and has only type imports."
+      - "Haversine tests: (0,0)->(0,1) is ~111195 m +-0.5%; symmetric; 0 for the same point."
+      - "Determinism tests: two placesNear((-23.5614,-46.6559),500) calls are deep-equal; every place id round-trips through parsePlaceId; cellOf(place.lat,place.lng) equals its id cell."
+      - "parsePlaceId rejects 'quiosque', 'geo:1', 'geo:a:b', 'geo:1.5:2', 'geo:1:2:3', and 'geo:99999999999999999999:0'."
+      - "All 7 PlaceKinds appear within 2 km of (-23.5614,-46.6559). artista and causa have visitTroco 0; every other kind has 8."
+      - "At least 1 place lies within 150 m of (-23.5614,-46.6559). Every placesNear(...,500) result is within 500 m, and the count is between 5 and 80."
+      - "Spawns: same window gives deep-equal spawnsNear; ids include the window; spawnFromId round-trips; adjacent windows give different id sets; spawnWindow boundary is tested."
+      - "`npx tsx --test tests/geo.test.ts` exits 0."
+      - "`npx tsc --noEmit` reports no errors in lib/geo.ts or tests/geo.test.ts."
+    handoff:
+      constraints:
+        - "Owns (exclusive write): lib/geo.ts, tests/geo.test.ts."
+        - "Must not edit package.json (T2 owns it in W1; T3 updates the test script in W2), lib/logic.ts, or lib/types.ts."
+        - "No commits/branches/stashes/pushes; do not touch .claude-flow/; never kill the dev server on :3000."
+      relevant_context:
+        - "lib/types.ts: Place, PlaceKind (7 kinds)."
+        - "lib/logic.ts:94-150 PLACES (legacy names/blurbs/visitTroco for tone); lib/logic.ts:55-70 hash/mulberry32 pattern."
+
+  - id: "T2-map-foundation"
+    title: "MapLibre map + player location (GPS/Simulado)"
+    description: "Rung: dependency (maplibre-gl via npm) + new code. Run npm install maplibre-gl. Create components/player-location.tsx and components/game-map.tsx per game-contracts. Map: OpenFreeMap liberty style, pitch 55, zoom ~17.5, follows the player, cheap game restyle with setPaintProperty on load (land/water/road/building, each guarded by map.getLayer), avatar HTML marker, 40 m ring as a GeoJSON polygon (local helper), 'GPS'/'Simulado' badge, sim d-pad plus WASD/arrow keys (ignore keys while focus is in an input/textarea/select). Do not mount it anywhere; T4 mounts it."
+    wave: 1
+    depends_on: []
+    agent: "gem-implementer"
+    status: "pending"
+    retries_used: 0
+    context_cluster: "game-contracts"
+    acceptance_criteria:
+      - "package.json dependencies include maplibre-gl, and package-lock.json is updated by npm install. No other dependency changes."
+      - "maplibre-gl and its CSS load client-side only (dynamic import inside useEffect, or the module is reachable only through next/dynamic ssr:false). Nothing touches window/navigator at module top level."
+      - "Map uses style https://tiles.openfreemap.org/styles/liberty with no API key and initial pitch 55 (+-5), and centers on and eases to each position update. Restyle calls are guarded so missing layer ids never throw."
+      - "usePlayerLocation uses navigator.geolocation.watchPosition with enableHighAccuracy:true and clears the watch on unmount. It switches to 'sim' on error, permission denied, missing geolocation, or no fix within 8 s, and immediately when the URL has ?sim=1."
+      - "Sim mode starts at SIM_START (-23.5614,-46.6559) unless sessionStorage holds a position. WASD/arrow keys and the on-screen d-pad move ~5 m per step, and the position persists to sessionStorage."
+      - "The avatar marker and the 40 m ring (radius prop, default 40) follow the position."
+      - "The badge shows 'GPS' or 'Simulado'. D-pad buttons are >= 44px with Portuguese aria-labels and appear only in sim mode."
+      - "Dev-only window.__mapa = { map } is set when process.env.NODE_ENV !== 'production'."
+      - "`npx tsc --noEmit` reports no errors in T2-owned files."
+    handoff:
+      constraints:
+        - "Owns (exclusive write): package.json (dependencies only), package-lock.json, components/game-map.tsx, components/player-location.tsx, optional components/dpad.tsx, optional co-located CSS module for these components."
+        - "Must not edit app/*, components/shell.tsx, components/world.tsx, lib/*, or app/globals.css (T4/T5 own it)."
+        - "Run npm install while the user's dev server keeps running; never kill it."
+        - "No commits/branches/stashes/pushes; do not touch .claude-flow/."
+      relevant_context:
+        - "Next 15.5 App Router, React 19; next/dynamic ssr:false is allowed only from client components (components/shell.tsx is 'use client')."
+      high_risk_signals:
+        - "external_tile_dependency: OpenFreeMap availability; the map must degrade without throwing."
+
+  - id: "T3-server-geo-domain"
+    title: "Server domain rewire: geo places, proximity validation, catch, SQLite migration"
+    description: "Rung: reuse perform/apply/saveWorld; new code only for geo validation, catch, and migration. Wire lib/geo.ts into lib/types.ts, lib/logic.ts, and lib/db.ts. Enforce proximity on the server, add the catch action, migrate the legacy SQLite file, migrate (not delete) the place tests, add db migration tests, harden the act route, and retire app/loja/[id]."
+    wave: 2
+    depends_on:
+      - "T1-geo-lib"
+    agent: "gem-implementer"
+    status: "pending"
+    retries_used: 0
+    context_cluster: "game-contracts"
+    acceptance_criteria:
+      - "lib/types.ts: Place has lat/lng; approach, buySlot, and buyPage actions carry lat,lng; new {type:'catch';spawnId;lat;lng} action."
+      - "apply rejects a non-finite or out-of-range lat/lng with a pt-BR error for approach, buySlot, buyPage, and catch."
+      - "approach resolves the place via placeFromId(placeId) only, never from client fields. An unknown, malformed, or legacy id ('quiosque', empty cell) throws 'Não existe esse lugar.'"
+      - "approach rejects distance > 50 m with a pt-BR error and no state change. placeIsOpen still gates it (feira only on Saturdays in America/Sao_Paulo)."
+      - "approach materializes or refreshes the place in world.places with lat/lng and generates the day's spinner for that place only (ensureSpinner scoped by day + placeId; RECIPES keyed by kind). Calçada troco is paid once per user per place per dayKey; presence is set."
+      - "buySlot requires presence === slot.shopId and distance to that place <= 50 m. buyPage requires the presence place to have kind 'papelaria' and distance <= 50 m. Price, free pocket, sold-once, PAGE_LIMIT, and PAGE_PRICE rules are unchanged."
+      - "catch looks up the spawn with spawnFromId (pt-BR error if missing). The window must be the current or previous spawnWindow(at), otherwise an expired error. It also rejects distance > 50 m, an existing instance catch-<user>-<spawnId>, and a full bolso."
+      - "A successful catch mints one instance: spawnArchetype(world,spawn), spawn.material, condition 'novo', home 'moeda', the free pocket, owner = active user, pt-BR originLabel (e.g. 'Solto na rua'), and one history entry."
+      - "seedWorld seeds zero places, and loadWorld no longer spins all places. syncPlaces re-derives seed fields of materialized geo places from lib/geo.ts and keeps visits and spinner."
+      - "A pure migrate step drops places without lat/lng plus their spinner slots, unsold balcão instances, and presence pointing at them, and keeps owned instances."
+      - "lib/db.ts: the places schema includes lat REAL and lng REAL. connection() adds missing columns via PRAGMA table_info(places) + ALTER TABLE, and saveWorld/readWorld persist lat/lng. The file path is process.env.ALBUM_DB_FILE ?? data/album.sqlite. The applyAction reset behavior is unchanged."
+      - "app/api/act/route.ts returns 400 with a pt-BR error for invalid JSON or a body without a string type, and never crashes."
+      - "app/loja/[id]/page.tsx becomes a server component that calls redirect('/')."
+      - "tests/rules.test.ts keeps all 9 original scenarios, migrated to geo places: seed, syncPlaces, viagem approach + spinner, artista/causa 0 troco, calçada once per day + closed feira, Saturday feira, buySlot presence + sold-once, stick/unstick/movePocket, resale/reprint."
+      - "New proximity tests in tests/rules.test.ts: approach is rejected far and accepted near; place-id forgery is rejected ('quiosque', empty cell, malformed, valid id with far coords); buySlot and buyPage are rejected when far; perform does not mutate its input."
+      - "New catch tests in tests/rules.test.ts: catch succeeds once per spawn; a second catch of the same spawn errors; a bolso with 12 filled pockets errors with no mint; far, expired, and forged spawn ids are rejected."
+      - "tests/db.test.ts builds a legacy-schema SQLite file in os.tmpdir (old places table without lat/lng, legacy rows), points ALBUM_DB_FILE at it, and dynamic-imports lib/db. loadWorld succeeds, lat/lng columns exist, legacy places are pruned, and owned instances are intact."
+      - "tests/db.test.ts also asserts that an applyAction catch persists across a fresh loadWorld and that applyAction({type:'reset'}) reseeds."
+      - "package.json scripts.test is 'tsx --test tests/rules.test.ts tests/geo.test.ts tests/db.test.ts', and `npm test` exits 0."
+      - "`npx tsc --noEmit` reports no errors in T3-owned files."
+      - "Live DB check: first copy data/album.sqlite to /tmp/album.sqlite.pre-geo. Then `curl -s -o /dev/null -w '%{http_code}' http://localhost:3000/api/world` returns 200 and every returned place has numeric lat/lng."
+    handoff:
+      constraints:
+        - "Owns (exclusive write): lib/types.ts, lib/logic.ts, lib/db.ts, lib/labels.ts, app/api/act/route.ts, app/api/world/route.ts, app/loja/[id]/page.tsx, tests/rules.test.ts, tests/db.test.ts (new), package.json (scripts.test only)."
+        - "Must not edit lib/geo.ts (owned by T1; report needed changes as needs_revision), components/*, app/layout.tsx, app/globals.css, app/page.tsx, or app/album|caderno|mercado|tabela (T4 runs in parallel)."
+        - "Keep all non-place domain rules intact; migrate place tests and never delete them."
+        - "perform must keep refusing reset; reset stays in applyAction."
+        - "Never trust client-sent place/spawn data beyond the id + lat/lng."
+        - "No commits/branches/stashes/pushes; do not touch .claude-flow/; never kill the dev server on :3000."
+      relevant_context:
+        - "lib/logic.ts: PLACES 94-150, RECIPES 160-205 (keyed by id), placeIsOpen 207, syncPlaces 220, seedWorld 257 (places at 291, presence at 295, ensureSpinner at 348), ensureSpinner 352-396, freePocket 409, apply approach 445, buySlot 457, buyPage 478 (checks presence === 'papelaria'), perform 671."
+        - "lib/db.ts: file const line 7, places schema 56-63, saveWorld ~99-163 (places insert 145), readWorld ~166-255, loadWorld 257 (syncPlaces + ensureSpinner), applyAction 266."
+        - "tests/rules.test.ts: 9 tests at lines 8, 34, 56, 71, 86, 100, 119, 134, 169; imports ensureSpinner, gelatinThickness, perform, placeIsOpen, seedWorld, syncPlaces."
+        - "app/loja/[id]/page.tsx sends approach/buySlot/buyPage without coordinates; it is the only action caller broken by the type change (app/page.tsx sends no actions)."
+      high_risk_signals:
+        - "schema_change"
+        - "migration"
+        - "api_change"
+        - "data_flow_change"
+      critic_signals:
+        - "architecture"
+
+  - id: "T4-game-hud-shell"
+    title: "Game HUD shell with persistent map and overlay routes"
+    description: "Rung: reuse existing pages/routes; new code only for the HUD and menu. Replace the top nav in components/shell.tsx with WorldProvider > PlayerLocationProvider > persistent full-screen GameMap (next/dynamic ssr:false) + HUD. Routes other than '/' render children inside a full-screen overlay panel with 'Voltar ao mapa'. app/page.tsx renders nothing visible because the map lives in Shell."
+    wave: 2
+    depends_on:
+      - "T2-map-foundation"
+    agent: "gem-implementer"
+    status: "pending"
+    retries_used: 0
+    context_cluster: "game-contracts"
+    acceptance_criteria:
+      - "Top HUD shows the active user name, troco, a Bia/Teo switcher (switchUser), and a reset button (reset). These are the same actions as before and are disabled while pending."
+      - "The bottom of the screen has a round menu button (>= 64px, aria-expanded) that opens Bolso (/album), Caderno (/caderno), Mercado (/mercado), and Tabela (/tabela)."
+      - "/album, /caderno, /mercado, and /tabela render their existing page inside a scrollable full-screen overlay (z 40) with a 'Voltar ao mapa' link to '/'. GameMap stays mounted underneath and does not remount when returning."
+      - "The world notice shows as an auto-hiding, dismissible toast (z 50)."
+      - "app/layout.tsx viewport: width device-width, initialScale 1, viewportFit 'cover'; page zoom is not disabled; metadata is kept."
+      - "app/globals.css: html/body at full height (100dvh), no body scroll on '/', safe-area insets, HUD/overlay styles. Existing page styles still apply."
+      - "app/page.tsx no longer renders the bairro list or links to /loja."
+      - "`curl -s -o /dev/null -w '%{http_code}'` returns 200 for /, /album, /caderno, /mercado, and /tabela on http://localhost:3000."
+      - "`npx tsc --noEmit` reports no errors in T4-owned files."
+    handoff:
+      constraints:
+        - "Owns (exclusive write): components/shell.tsx, components/hud.tsx (new), app/layout.tsx, app/globals.css, app/page.tsx, plus layout-only tweaks to app/album/page.tsx, app/caderno/page.tsx, app/mercado/page.tsx, app/tabela/page.tsx (no behavior change)."
+        - "Must not edit lib/*, app/api/*, app/loja/*, tests/*, package.json, components/game-map.tsx, components/player-location.tsx, or components/world.tsx."
+        - "No commits/branches/stashes/pushes; do not touch .claude-flow/; never kill the dev server on :3000."
+      relevant_context:
+        - "components/shell.tsx: LINKS nav, switchUser at line 36, reset at line 54; wraps WorldProvider (components/world.tsx: act -> POST /api/act, pending, notice)."
+        - "app/layout.tsx: Fraunces/Literata fonts, viewport width/initialScale/themeColor #17202b."
+
+  - id: "T5-map-gameplay"
+    title: "Places, loja bottom sheet, wild spawns and catch on the map; final gates"
+    description: "Rung: reuse lib/geo.ts, lib/logic.ts (placeIsOpen, dayKey, spawnArchetype, caughtInstanceId), lib/labels.ts (PAGE_PRICE), components/sticker.tsx, and the old loja markup/copy (git show HEAD:app/loja/[id]/page.tsx). New code only for markers, the sheet, and the spawn layer. Then run the final repo gates."
+    wave: 3
+    depends_on:
+      - "T1-geo-lib"
+      - "T2-map-foundation"
+      - "T3-server-geo-domain"
+      - "T4-game-hud-shell"
+    agent: "gem-implementer"
+    status: "pending"
+    retries_used: 0
+    context_cluster: "game-contracts"
+    acceptance_criteria:
+      - "Places from placesNear(position,500) render as markers, diffed by id (not recreated on every position update)."
+      - "A place renders as 'holograma' (translucent + shimmer, static under prefers-reduced-motion) when > 40 m away or closed, and solid when <= 40 m and open."
+      - "Tapping a place opens components/place-sheet.tsx as a bottom sheet over the map with the URL unchanged. It shows name, blurb, kind, distance, and aberto/fechado (feira only on Saturday), and closes via a button or the backdrop."
+      - "In the sheet, 'Chegar na calçada' is enabled only when <= 40 m and open, and sends act({type:'approach',placeId,lat,lng})."
+      - "The sheet lists the day's spinner slots (world.spinner by shopId + dayKey()) with StickerFace and price. Buy sends act({type:'buySlot',slotId,lat,lng}) and is enabled only when presence === place.id and <= 40 m."
+      - "At a papelaria, the sheet offers 'comprar folha' (PAGE_PRICE) via act({type:'buyPage',lat,lng}). With no slots for today, it shows a pt-BR hint to approach."
+      - "Wild spawns from spawnsNear(position,500,now) refresh when the window changes (poll <= 30 s) and use components/sticker.tsx art via spawnArchetype. Spawns the active user already caught (caughtInstanceId present in world.instances) are hidden."
+      - "Tapping a spawn within 40 m sends act({type:'catch',spawnId,lat,lng}). When farther, it shows a distance hint and sends nothing."
+      - "Every proximity action sends the current usePlayerLocation position, and server errors surface through the existing notice/toast."
+      - "Final gates: `npm test` exits 0; `npx tsc --noEmit` exits 0."
+      - "Final gate, isolated build: `rm -rf /tmp/sa-build && rsync -a --exclude node_modules --exclude .next --exclude data --exclude .claude-flow ./ /tmp/sa-build/ && ln -s \"$PWD/node_modules\" /tmp/sa-build/node_modules && (cd /tmp/sa-build && npx next build)` exits 0. If the symlink breaks resolution, fall back to `npm ci` inside /tmp/sa-build."
+    handoff:
+      constraints:
+        - "Owns (exclusive write): components/game-map.tsx, components/place-sheet.tsx (new), components/spawn-layer.tsx (new, optional), app/globals.css, components/world.tsx (only if needed), components/shell.tsx (only to host the sheet/toast if needed)."
+        - "Must not edit lib/*, app/api/*, tests/*, or package.json. Report server issues as needs_revision for T3."
+        - "Never run next build in the repo root; the user's dev server shares .next."
+        - "No commits/branches/stashes/pushes; do not touch .claude-flow/; never kill the dev server on :3000."
+      relevant_context:
+        - "The old loja page (HEAD) holds the approach/buySlot/buyPage UI and the Portuguese copy to reuse."
+        - "Feira opens only on Saturdays via placeIsOpen; artista/causa pay 0 calçada troco."
+
+  - id: "T6-server-critic-review"
+    title: "Independent critic review of server rules and migration"
+    description: "Read-only architecture + security critic review of the T1/T3 changes, using the .cursor/agents/album-reviewer.md checklist. Runs in parallel with T5 so server findings land before UI verification."
+    wave: 3
+    depends_on:
+      - "T3-server-geo-domain"
+    agent: "gem-reviewer"
+    status: "pending"
+    retries_used: 0
+    acceptance_criteria:
+      - "Findings are ordered by severity with file:line."
+      - "Proximity coverage: approach, buySlot, buyPage, and catch each enforce <= 50 m on the server."
+      - "Id and catch checks: place and spawn ids are re-derived from lib/geo.ts; the spawn window is checked; catch dedupe and the free-pocket rule hold."
+      - "Persistence and HTTP: legacy DB migration, applyAction reset, and invalid-JSON handling in app/api/act are covered."
+      - "No regression of preserved rules: presence per user, calçada once/day, feira on Saturday, care troco once, ghosts, resale vs reprint, tariff bounds, PAGE_LIMIT/STICKERS_PER_PAGE."
+      - "Runs `npm test` and `npx tsc --noEmit` and cites the results."
+      - "Verdict: either no critical/high findings, or status needs_revision with concrete fixes routed to the T3 owner."
+    handoff:
+      constraints:
+        - "Read-only: no edits. Use `git --no-pager diff` and `git --no-pager status` for scope."
+        - "Do not run next build in the repo root; do not touch .claude-flow/; never kill the dev server on :3000."
+      relevant_context:
+        - ".cursor/agents/album-reviewer.md (invariants and the 'Untested rules' format)."
+      critic_signals:
+        - "architecture"
+
+  - id: "T7-mobile-browser-verification"
+    title: "Mobile browser verification at 390x844 with simulated location"
+    description: "End-to-end UI verification on the user's running dev server (http://localhost:3000) at a 390x844 touch viewport. Covers objective criteria 1-5, 8, and 9."
+    wave: 4
+    depends_on:
+      - "T5-map-gameplay"
+      - "T6-server-critic-review"
+    agent: "gem-browser-tester"
+    status: "pending"
+    retries_used: 0
+    acceptance_criteria:
+      - "On /?sim=1, the map canvas fills the viewport and window.__mapa.map.getPitch() is between 50 and 60. The style comes from tiles.openfreemap.org/styles/liberty. The badge reads 'Simulado', and the avatar and 40 m ring are visible (screenshot)."
+      - "On / without ?sim=1 and with geolocation permission denied, the badge switches to 'Simulado' within 10 s."
+      - "Each arrow-key press and each d-pad tap moves the avatar/map center by 3-7 m."
+      - "Places within ~500 m render: far ones as holograma, and the nearest one turns solid after walking within 40 m of it."
+      - "Tapping a place opens the bottom sheet with the URL unchanged."
+      - "'Chegar na calçada' raises troco by the place's visitTroco (0 for artista/causa), and a second approach the same day adds nothing."
+      - "The day's slots appear in the sheet, and buy is enabled while near. If a papelaria is within ~300 m, buy page is offered only there; otherwise, record that none was in reach."
+      - "Walking within 40 m of a spawn and tapping it shows a notice, and the sticker appears in Bolso (/album). The same spawn cannot be caught again."
+      - "The menu button opens Bolso, Caderno, Mercado, and Tabela with their existing content. 'Voltar ao mapa' returns to '/' with the same simulated position (no reset to the start)."
+      - "Switching between Bia and Teo updates the name and troco in the HUD. The reset button is visible and is not clicked."
+      - "Every tapped target is >= 44px, there is no horizontal scroll at 390px, and the console has no uncaught errors (tile/network errors listed separately)."
+      - "Screenshots are saved under docs/plan/20261111-mapa-geolocalizado/evidence/."
+    handoff:
+      constraints:
+        - "Use the running dev server on :3000; do not start another one or kill it."
+        - "Before interacting, copy data/album.sqlite to /tmp/album.sqlite.pre-browser. Never click reset on the live DB."
+        - "If tiles fail because the network is offline, report it, but do not fail when the HUD, markers, and actions still work."
+        - "No source edits; write only to the evidence directory."
