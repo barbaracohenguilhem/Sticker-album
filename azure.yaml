@@ -1,0 +1,80 @@
+name: modernize-your-code-solution-accelerator
+metadata:
+    template: modernize-your-code-solution-accelerator@1.0
+
+requiredVersions:
+  azd: '>= 1.18.0 != 1.23.9'
+
+parameters:
+  AzureAiServiceLocation:
+    type: string
+    default: japaneast
+  Prefix:
+    type: string
+    default: azdtemp
+  baseUrl:
+    type: string
+    default: 'https://raw.githubusercontent.com/microsoft/Modernize-your-code-solution-accelerator'
+
+hooks:
+  preprovision:
+    windows:
+      run: |
+        Write-Host ""
+        Write-Host "  ---------------------------------------------------------------------------------------------------" -ForegroundColor Yellow
+        Write-Host "  Note: If deployment fails or you encounter an issue, please open an issue with the deployment logs." -ForegroundColor Yellow
+        Write-Host "  https://github.com/microsoft/Modernize-your-code-solution-accelerator/issues" -ForegroundColor Cyan
+        Write-Host "  ---------------------------------------------------------------------------------------------------" -ForegroundColor Yellow
+        Write-Host ""
+      shell: pwsh
+      interactive: true
+    posix:
+      run: |
+        printf '\n'
+        printf '\033[33m  ---------------------------------------------------------------------------------------------------\033[0m\n'
+        printf '\033[33m  Note: If deployment fails or you encounter an issue, please open an issue with the deployment logs.\033[0m\n'
+        printf '\033[36m  https://github.com/microsoft/Modernize-your-code-solution-accelerator/issues\033[0m\n'
+        printf '\033[33m  ---------------------------------------------------------------------------------------------------\033[0m\n'
+        printf '\n'
+      shell: sh
+      interactive: true
+  postprovision:
+    windows:
+      run: |
+        Write-Host "===== Provisioning Complete =====" -ForegroundColor Green
+        Write-Host "=> Next step: build and push container images to the dedicated ACR (remote build):" -ForegroundColor Yellow
+        
+        # Check if running from bash/MINGW64 terminal
+        if ($env:SHELL -like "*bash*" -or $env:TERM_PROGRAM -like "*git*" -or $env:MSYSTEM -eq "MINGW64") {
+          Write-Host "  bash scripts/build_and_push_images.sh" -ForegroundColor Cyan
+        } else {
+          Write-Host "  .\scripts\build_and_push_images.ps1" -ForegroundColor Cyan
+        }
+        
+        Write-Host ""
+        $webAppUrl = $env:WEB_APP_URL
+        if ([string]::IsNullOrWhiteSpace($webAppUrl)) { $webAppUrl = azd env get-value WEB_APP_URL 2>$null }
+        Write-Host "Web app URL: " -NoNewline
+        Write-Host "$webAppUrl" -ForegroundColor Cyan
+      shell: pwsh
+      continueOnError: false
+      interactive: true
+    posix:
+      run: |
+        echo "===== Provisioning Complete ====="
+        echo "=> Next step: build and push container images to the dedicated ACR (remote build):"
+        echo "  bash scripts/build_and_push_images.sh"
+        echo ""
+        WEB_APP_URL_DISPLAY="$WEB_APP_URL"
+        if [ -z "$WEB_APP_URL_DISPLAY" ]; then WEB_APP_URL_DISPLAY=$(azd env get-value WEB_APP_URL 2>/dev/null); fi
+        echo "Web app URL: $WEB_APP_URL_DISPLAY"
+      shell: sh
+      continueOnError: false
+      interactive: true
+deployment:
+  mode: Incremental
+  template: ./infra/main.bicep  # Path to the main.bicep file inside the 'deployment' folder
+  parameters:
+    AzureAiServiceLocation: ${{ parameters.AzureAiServiceLocation }}
+    Prefix: ${{ parameters.Prefix }}
+    baseUrl: ${{ parameters.baseUrl }}
