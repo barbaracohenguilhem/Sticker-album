@@ -17,7 +17,7 @@ const TREES = [
 
 export function NeighborhoodScene() {
   return (
-    <svg className="neighborhood-art" viewBox="0 0 1000 1000" aria-hidden="true">
+    <svg className="neighborhood-art" viewBox="-1000 -1000 3000 3000" aria-hidden="true">
       <defs>
         <pattern id="grass-grain" width="37" height="31" patternUnits="userSpaceOnUse">
           <path d="m8 9 2-3m0 3 2-2 M27 25l2-3" stroke="#78b891" strokeWidth="1" opacity=".35" />
@@ -26,11 +26,11 @@ export function NeighborhoodScene() {
           <path d="M5 10h14m8 14h10" stroke="#e5f6ef" strokeWidth="2" opacity=".45" />
         </pattern>
       </defs>
-      <path fill="#acd4ad" d="M0 0h1000v1000H0z" />
-      <path fill="url(#grass-grain)" d="M0 0h1000v1000H0z" />
-      <path d="M-80 760C110 540 280 890 430 660S730 545 730 375 940 350 1060 160" fill="none" stroke="#83baa5" strokeWidth="112" />
-      <path d="M-80 760C110 540 280 890 430 660S730 545 730 375 940 350 1060 160" fill="none" stroke="#72bfc5" strokeWidth="82" />
-      <path d="M-80 760C110 540 280 890 430 660S730 545 730 375 940 350 1060 160" fill="none" stroke="url(#water-lines)" strokeWidth="80" />
+      <path fill="#acd4ad" d="M-1000-1000h3000v3000h-3000z" />
+      <path fill="url(#grass-grain)" d="M-1000-1000h3000v3000h-3000z" />
+      <path d="M-1200 1150Q-450 1200-80 760C110 540 280 890 430 660S730 545 730 375 940 350 1060 160 1450-300 2200-150" fill="none" stroke="#83baa5" strokeWidth="112" />
+      <path d="M-1200 1150Q-450 1200-80 760C110 540 280 890 430 660S730 545 730 375 940 350 1060 160 1450-300 2200-150" fill="none" stroke="#72bfc5" strokeWidth="82" />
+      <path d="M-1200 1150Q-450 1200-80 760C110 540 280 890 430 660S730 545 730 375 940 350 1060 160 1450-300 2200-150" fill="none" stroke="url(#water-lines)" strokeWidth="80" />
       <g fill="#99c79a" stroke="#90bd90" strokeWidth="2">
         <path d="m325 390 133-28 65 200-149 37-81-68Z" />
         <path d="m285 70 259-55 23 129-261 55Z" />
@@ -38,16 +38,16 @@ export function NeighborhoodScene() {
       </g>
       <g fill="none" strokeLinecap="round" strokeLinejoin="round">
         <g stroke="#92b8a0" strokeWidth="39">
-          <path d="M-40 330 1050 100 M-40 523 1030 297 M-40 726 1040 497 M-40 966 1040 737" />
-          <path d="m240-50 260 1100 M480-60 260 1100 M760-70 260 1100 M0-50l240 1100" />
+          <path d="M-1200 575 2200-143 M-1200 768 2200 50 M-1200 971 2200 254 M-1200 1211 2200 494" />
+          <path d="M-32-1200 772 2200 M208-1200 1012 2200 M488-1200 1292 2200 M-251-1200 491 2200" />
         </g>
         <g stroke="#ecebd1" strokeWidth="30">
-          <path d="M-40 330 1050 100 M-40 523 1030 297 M-40 726 1040 497 M-40 966 1040 737" />
-          <path d="m240-50 260 1100 M480-60 260 1100 M760-70 260 1100 M0-50l240 1100" />
+          <path d="M-1200 575 2200-143 M-1200 768 2200 50 M-1200 971 2200 254 M-1200 1211 2200 494" />
+          <path d="M-32-1200 772 2200 M208-1200 1012 2200 M488-1200 1292 2200 M-251-1200 491 2200" />
         </g>
         <g stroke="#faf6df" strokeWidth="2" strokeDasharray="10 15">
-          <path d="M-40 523 1030 297 M-40 966 1040 737" />
-          <path d="m480-60 260 1100" />
+          <path d="M-1200 768 2200 50 M-1200 1211 2200 494" />
+          <path d="M208-1200 1012 2200" />
         </g>
         <path d="m340 435 105-22 40 123-75 16" stroke="#d7ddbb" strokeWidth="9" />
       </g>

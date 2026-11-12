@@ -32,3 +32,5 @@
 [2026-11-12T01:05:04.006Z] [INFO] Worker consolidate deferred: Memory too low: 0.5% free
 [2026-11-12T01:07:04.021Z] [INFO] Worker testgaps deferred: CPU load too high: 8.02
 [2026-11-12T01:09:04.020Z] [INFO] Worker backup deferred: CPU load too high: 9.17
+[2026-11-12T01:11:04.016Z] [INFO] Worker harness deferred: CPU load too high: 8.47
+[2026-11-12T01:11:04.020Z] [INFO] Worker audit deferred: CPU load too high: 8.47

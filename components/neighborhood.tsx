@@ -12,6 +12,7 @@ import { useWorld } from "./world";
 
 type Point = { x: number; y: number };
 const START: Point = { x: 515, y: 560 };
+// Scene coordinates for the fictional neighborhood, not geographic locations.
 const LANDMARKS: Record<string, Point & { motif: Motif; hue: number; label: string }> = {
   quiosque: { x: 420, y: 405, motif: "lua", hue: 215, label: "A esquina" },
   papelaria: { x: 700, y: 355, motif: "estrela", hue: 38, label: "Papelaria" },
@@ -32,6 +33,7 @@ function Encounter({ place, world, onClose }: { place: Place; world: World; onCl
   const dialog = useRef<HTMLDialogElement>(null);
   const [index, setIndex] = useState(0);
   const [collected, setCollected] = useState<string | null>(null);
+  const [pageAdded, setPageAdded] = useState(false);
   const today = dayKey();
   const near = world.presence[world.activeUserId] === place.id;
   const open = placeIsOpen(place);
@@ -130,7 +132,13 @@ function Encounter({ place, world, onClose }: { place: Place; world: World; onCl
           </>
         )}
         {near && open && place.id === "papelaria" && !collected ? (
-          <button className="quiet-button" type="button" disabled={pending} onClick={() => act({ type: "buyPage" })}>Uma folha nova para o caderno · {PAGE_PRICE} troco</button>
+          <>
+            <button className="quiet-button" type="button" disabled={pending} onClick={async () => {
+              setPageAdded(false);
+              if (await act({ type: "buyPage" })) setPageAdded(true);
+            }}>Uma folha nova para o caderno · {PAGE_PRICE} troco</button>
+            {pageAdded ? <p role="status">Folha nova guardada no caderno.</p> : null}
+          </>
         ) : null}
       </div>
     </dialog>
@@ -222,7 +230,7 @@ export function Neighborhood() {
                 <span className="pin-piece"><StickerFace motif={landmark.motif} hue={landmark.hue} material={open ? "holografico" : "veludo"} /></span>
                 <span className="pin-stem" />
                 <span className="pin-label">{landmark.label}{visited[place.id] ? <GameIcon name="check" /> : null}</span>
-                <span className="pin-detail">{!open ? "SÓ NO SÁBADO" : remaining ? `${remaining} ACHADOS` : "VOLTE AMANHÃ"}</span>
+                <span className="pin-detail">{!open ? "SÓ NO SÁBADO" : remaining ? `${remaining} ${remaining === 1 ? "ACHADO" : "ACHADOS"}` : "VOLTE AMANHÃ"}</span>
               </button>
             );
           })}
