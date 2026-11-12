@@ -54,7 +54,7 @@ button:focus-visible, a:focus-visible, summary:focus-visible, [tabindex]:focus-v
 .map-viewport { position: absolute; inset: 0; overflow: hidden; cursor: grab; touch-action: none; }
 .map-viewport.is-dragging { cursor: grabbing; }
 .map-world { position: absolute; width: 1000px; height: 1000px; transform-origin: 0 0; will-change: transform; }
-.neighborhood-art { display: block; width: 100%; height: 100%; pointer-events: none; }
+.neighborhood-art { position: absolute; left: -1000px; top: -1000px; display: block; width: 3000px; height: 3000px; pointer-events: none; }
 .neighborhood-heading { position: absolute; pointer-events: none; left: 38px; top: 138px; }
 .walk-mode { display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 600; margin-bottom: 10px; }
 .walk-mode > span { width: 6px; height: 6px; background: #326849; border-radius: 50%; }
@@ -164,6 +164,7 @@ button:focus-visible, a:focus-visible, summary:focus-visible, [tabindex]:focus-v
   .neighborhood-heading { left: 20px; top: 98px; }
   .neighborhood-heading h1 { font-size: 24px; }
   .neighborhood-heading p { display: none; }
+  .map-viewport { inset: 153px 0 115px; }
   .walk-mode { font-size: 11px; margin-bottom: 6px; }
   .map-controls { right: 17px; top: 43%; gap: 6px; }
   .map-controls .icon-button { width: 42px; height: 42px; }
