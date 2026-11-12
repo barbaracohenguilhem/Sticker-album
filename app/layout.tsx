@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Shell } from "@/components/shell";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 import "./game.css";
 
@@ -19,6 +20,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="pt-BR">
       <body>
         <Shell>{children}</Shell>
+        <SpeedInsights />
       </body>
     </html>
   );
