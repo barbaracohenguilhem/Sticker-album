@@ -4,17 +4,9 @@ permissions:
   contents: read
   actions: read
   id-token: write
+# Canonical automated deploy is deploy-v2.yml (same workflow_run + schedule).
+# Keep this legacy pipeline manual-only to avoid double Azure deploys/quota usage.
 on:
-    workflow_run:
-      workflows: ["Build Docker and Optional Push"]
-      types:
-        - completed
-      branches:
-        - main
-        - dev
-        - demo
-    schedule:
-      - cron: '0 5,17 * * *'  # Runs at 5:00 AM and 5:00 PM GMT
     workflow_dispatch:
 
 env:
@@ -53,9 +45,14 @@ jobs:
           GPT_MIN_CAPACITY: ${{ env.GPT_MIN_CAPACITY }}
         run: |
           chmod +x scripts/checkquota.sh
-          if ! scripts/checkquota.sh; then
+          set +e
+          scripts/checkquota.sh > /tmp/quota-check.log 2>&1
+          QUOTA_EXIT=$?
+          set -e
+          cat /tmp/quota-check.log
+          if [ $QUOTA_EXIT -ne 0 ]; then
             # If quota check fails due to insufficient quota, set the flag
-            if grep -q "No region with sufficient quota found" scripts/checkquota.sh; then
+            if grep -q "No region with sufficient quota found" /tmp/quota-check.log; then
               echo "QUOTA_FAILED=true" >> $GITHUB_ENV
             fi
             exit 1  # Fail the pipeline if any other failure occurs
@@ -106,7 +103,7 @@ jobs:
           rg_exists=$(az group exists --name ${{ env.RESOURCE_GROUP_NAME }})
           if [ "$rg_exists" = "false" ]; then
             echo "Resource group does not exist. Creating..."
-            az group create --name ${{ env.RESOURCE_GROUP_NAME }} --location australiaeast || { echo "Error creating resource group"; exit 1; }
+            az group create --name ${{ env.RESOURCE_GROUP_NAME }} --location ${{ env.AZURE_LOCATION }} || { echo "Error creating resource group"; exit 1; }
           else
             echo "Resource group already exists."
           fi
@@ -389,7 +386,7 @@ jobs:
 
           # Purge OpenAI Resource
           echo "Purging the OpenAI Resource..."
-          if ! az resource delete --ids /subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/providers/Microsoft.CognitiveServices/locations/australiaeast/resourceGroups/${{ env.RESOURCE_GROUP_NAME }}/deletedAccounts/${{ env.OPENAI_RESOURCE_NAME }} --verbose; then
+          if ! az resource delete --ids /subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/providers/Microsoft.CognitiveServices/locations/${{ env.AZURE_LOCATION }}/resourceGroups/${{ env.RESOURCE_GROUP_NAME }}/deletedAccounts/${{ env.OPENAI_RESOURCE_NAME }} --verbose; then
             echo "Failed to purge openai resource: ${{ env.OPENAI_RESOURCE_NAME }}"
           else
             echo "Purged the openai resource: ${{ env.OPENAI_RESOURCE_NAME }}"

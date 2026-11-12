@@ -292,9 +292,14 @@ jobs:
         run: |
 
           chmod +x scripts/checkquota.sh
-          if ! scripts/checkquota.sh; then
+          set +e
+          scripts/checkquota.sh > /tmp/quota-check.log 2>&1
+          QUOTA_EXIT=$?
+          set -e
+          cat /tmp/quota-check.log
+          if [ $QUOTA_EXIT -ne 0 ]; then
             # If quota check fails due to insufficient quota, set the flag
-            if grep -q "No region with sufficient quota found" scripts/checkquota.sh; then
+            if grep -q "No region with sufficient quota found" /tmp/quota-check.log; then
               echo "QUOTA_FAILED=true" >> $GITHUB_ENV
             fi
             exit 1  # Fail the pipeline if any other failure occurs

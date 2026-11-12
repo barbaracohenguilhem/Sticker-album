@@ -1,62 +1,62 @@
 {
   "running": true,
-  "startedAt": "2026-11-11T18:48:58.641Z",
+  "startedAt": "2026-11-12T00:59:04.001Z",
   "workers": {
     "map": {
       "runCount": 0,
       "successCount": 0,
       "failureCount": 0,
       "averageDurationMs": 0,
-      "isRunning": false,
-      "nextRun": "2026-11-11T18:48:58.641Z"
+      "nextRun": "2026-11-12T00:59:04.002Z",
+      "isRunning": false
     },
     "audit": {
       "runCount": 0,
       "successCount": 0,
       "failureCount": 0,
       "averageDurationMs": 0,
-      "isRunning": false,
-      "nextRun": "2026-11-11T18:50:58.641Z"
+      "nextRun": "2026-11-12T01:01:04.002Z",
+      "isRunning": false
     },
     "optimize": {
       "runCount": 0,
       "successCount": 0,
       "failureCount": 0,
       "averageDurationMs": 0,
-      "isRunning": false,
-      "nextRun": "2026-11-11T18:52:58.641Z"
+      "nextRun": "2026-11-12T01:03:04.002Z",
+      "isRunning": false
     },
     "consolidate": {
       "runCount": 0,
       "successCount": 0,
       "failureCount": 0,
       "averageDurationMs": 0,
-      "isRunning": false,
-      "nextRun": "2026-11-11T18:54:58.641Z"
+      "nextRun": "2026-11-12T01:05:04.003Z",
+      "isRunning": false
     },
     "testgaps": {
       "runCount": 0,
       "successCount": 0,
       "failureCount": 0,
       "averageDurationMs": 0,
-      "isRunning": false,
-      "nextRun": "2026-11-11T18:56:58.641Z"
+      "nextRun": "2026-11-12T01:07:04.003Z",
+      "isRunning": false
     },
     "backup": {
       "runCount": 0,
       "successCount": 0,
       "failureCount": 0,
       "averageDurationMs": 0,
-      "isRunning": false,
-      "nextRun": "2026-11-11T18:58:58.642Z"
+      "nextRun": "2026-11-12T01:09:04.003Z",
+      "isRunning": false
     },
     "harness": {
       "runCount": 0,
       "successCount": 0,
       "failureCount": 0,
       "averageDurationMs": 0,
-      "isRunning": false,
-      "nextRun": "2026-11-11T19:00:58.642Z"
+      "nextRun": "2026-11-12T01:11:04.003Z",
+      "isRunning": false
     },
     "predict": {
       "runCount": 0,
@@ -75,8 +75,8 @@
   },
   "config": {
     "autoStart": false,
-    "logDir": "/Users/barbaracohen/Sticker album/.claude-flow/logs",
-    "stateFile": "/Users/barbaracohen/Sticker album/.claude-flow/daemon-state.json",
+    "logDir": "/Users/barbaracohen/kepler/Sticker-album/.claude-flow/logs",
+    "stateFile": "/Users/barbaracohen/kepler/Sticker-album/.claude-flow/daemon-state.json",
     "maxConcurrent": 2,
     "workerTimeoutMs": 960000,
     "resourceThresholds": {
@@ -161,5 +161,5 @@
       }
     ]
   },
-  "savedAt": "2026-11-11T18:48:58.642Z"
+  "savedAt": "2026-11-12T00:59:04.004Z"
 }
