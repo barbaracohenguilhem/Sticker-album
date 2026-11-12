@@ -34,3 +34,4 @@
 [2026-11-12T01:09:04.020Z] [INFO] Worker backup deferred: CPU load too high: 9.17
 [2026-11-12T01:11:04.016Z] [INFO] Worker harness deferred: CPU load too high: 8.47
 [2026-11-12T01:11:04.020Z] [INFO] Worker audit deferred: CPU load too high: 8.47
+[2026-11-12T01:14:04.033Z] [INFO] Worker map deferred: CPU load too high: 8.21

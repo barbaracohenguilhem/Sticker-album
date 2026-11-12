@@ -51,9 +51,14 @@ function Encounter({ place, world, onClose }: { place: Place; world: World; onCl
     return () => element?.close();
   }, []);
 
+  function close() {
+    dialog.current?.close();
+    onClose();
+  }
+
   return (
-    <dialog ref={dialog} className="encounter" aria-labelledby="encounter-title" onCancel={onClose}>
-      <button className="icon-button encounter-close" type="button" onClick={onClose} aria-label="Voltar ao passeio">
+    <dialog ref={dialog} className="encounter" aria-labelledby="encounter-title" onCancel={(event) => { event.preventDefault(); close(); }}>
+      <button className="icon-button encounter-close" type="button" onClick={close} aria-label="Voltar ao passeio">
         <GameIcon name="close" />
       </button>
       <div className="encounter-heading">
@@ -88,7 +93,7 @@ function Encounter({ place, world, onClose }: { place: Place; world: World; onCl
           <>
             <h3>Ainda não é dia de feira.</h3>
             <p>Esse ponto abre aos sábados, no horário de São Paulo. Enquanto isso, tem um bairro inteiro para explorar.</p>
-            <button className="game-action" type="button" onClick={onClose}>Continuar o passeio <GameIcon name="arrow" /></button>
+            <button className="game-action" type="button" onClick={close}>Continuar o passeio <GameIcon name="arrow" /></button>
           </>
         ) : !near ? (
           <>
@@ -128,7 +133,7 @@ function Encounter({ place, world, onClose }: { place: Place; world: World; onCl
           <>
             <h3>Por hoje, todo mundo foi.</h3>
             <p>As peças deste ponto já encontraram um álbum. Amanhã tem outras.</p>
-            <button className="game-action" type="button" onClick={onClose}>Explorar outro ponto <GameIcon name="arrow" /></button>
+            <button className="game-action" type="button" onClick={close}>Explorar outro ponto <GameIcon name="arrow" /></button>
           </>
         )}
         {near && open && place.id === "papelaria" && !collected ? (
