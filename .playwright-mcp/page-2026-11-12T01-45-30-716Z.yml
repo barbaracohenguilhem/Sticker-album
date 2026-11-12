@@ -1,0 +1,26 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - link "Pular para o jogo" [ref=e3] [cursor=pointer]:
+      - /url: "#game-main"
+    - banner:
+      - link "Dois álbuns, voltar ao bairro" [ref=e4] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e8]: doisálbuns.
+      - group [ref=e10]:
+        - generic "Perfil e opções" [ref=e11] [cursor=pointer]:
+          - generic [ref=e12]: ·
+          - generic [ref=e13]: Abrindo…
+    - main [ref=e14]:
+      - status [ref=e15]:
+        - heading "Um mundo de pequenos achados…" [level=1] [ref=e18]
+        - paragraph [ref=e19]: Preparando seu passeio.
+    - navigation "Jogo" [ref=e20]:
+      - link "Explorar" [ref=e21] [cursor=pointer]:
+        - /url: /
+      - link "Meu álbum" [ref=e26] [cursor=pointer]:
+        - /url: /album
+      - link "Caderno" [ref=e31] [cursor=pointer]:
+        - /url: /caderno
+      - link "Trocas" [ref=e36] [cursor=pointer]:
+        - /url: /mercado
+  - alert [ref=e41]
