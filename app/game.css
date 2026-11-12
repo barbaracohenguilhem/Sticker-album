@@ -191,6 +191,14 @@ button:focus-visible, a:focus-visible, summary:focus-visible, [tabindex]:focus-v
   .sticker-plinth .sticker { width: 96px; height: 108px; }
   .carousel-prev, .carousel-next { top: 50px; }
 }
+@media (max-height: 500px) {
+  .neighborhood-heading, .explore-hint { display: none; }
+  .map-viewport { inset: 85px 0 100px; }
+  .map-controls { top: 88px; flex-direction: row; }
+  .map-controls .recenter { margin-top: 0; }
+  .map-help { top: 148px; bottom: auto; }
+  .map-help p { top: 45px; bottom: auto; max-height: calc(100dvh - 210px); overflow: auto; }
+}
 @media (prefers-reduced-motion: reduce) {
   .map-player, .pin-piece { transition: none; }
   .is-collected .sticker-plinth .sticker { animation: none; }
