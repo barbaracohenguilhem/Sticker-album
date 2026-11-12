@@ -6,6 +6,14 @@
 
 # Modernize your code solution accelerator
 
+## Workspace layout
+
+This template is initialized alongside the existing Sticker-album application:
+
+- The root [package.json](./package.json), [app](./app), [components](./components), and [lib](./lib) belong to the Next.js album. Run `npm run dev`, `npm test`, and `npm run build` from the repository root for that app.
+- The accelerator has a separate [frontend](./src/frontend) and [backend](./src/backend). Follow its [local development guide](./docs/LocalDevelopmentSetup.md) for setup. The root [TypeScript configuration](./tsconfig.json) excludes the accelerator frontend so album builds do not require its dependencies.
+- [azure.yaml](./azure.yaml) and [infra](./infra) configure the accelerator, not the album. Initialization alone does not provision or deploy Azure resources.
+
 Welcome to the *Modernize your code* solution accelerator, designed to help customers transition their SQL queries to new environments quickly and efficiently. This accelerator is particularly useful for organizations modernizing their data estates, as it simplifies the process of translating SQL queries from various dialects.
 
 When dealing with legacy code, users often face significant challenges, including the absence of proper documentation, loss of knowledge of outdated languages, and missing business logic that explains functional requirements.

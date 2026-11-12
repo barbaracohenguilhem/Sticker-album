@@ -7,3 +7,16 @@ node_modules/
 data/
 tsconfig.tsbuildinfo
 .azure
+
+# Accelerator fixtures share data directories with the album's local state.
+!/data/
+/data/*
+!/data/informix/
+!/src/tests/backend/data/
+
+# Accelerator local configuration and Python artifacts.
+.env
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
